@@ -37,18 +37,16 @@ int game = GAME_END; /*게임 시작, 게임 종료*/
 
 int display_menu(); /* 메뉴 표시*/
 int game_start();
+void draw_block();
 int check_collision (int nx, int ny, int nrot);
 void move_block (int dir);
 void fix_block();
 void clear_lines();
 int spawn_new_block();
-
-void search_result() {
-	printf("결과 찾기 미구현");
-}
-void print_result() {
-	printf("결과 출력 미구현");
-}
+long get_point();
+void save_result();
+void print_result();
+void search_result();
 
 char blocks[7][4][4][4] = {
 	{
@@ -109,138 +107,23 @@ char blocks[7][4][4][4] = {
 #define WIDTH 10
 int tetris_table[HEIGHT][WIDTH] = {0};
 
-
-
 int block_number = 0;  /*블록 번호*/
 int next_block_number = 0; /*다음 블록 번호 */
 int block_state = 0; /*블록 상태, 왼쪽, 오른쪽, 아래, 회전*/
 int x = 3, y = 0; /*블록의 최초 위치*/
 
-void draw_block() {
-	printf("\033[H");
-	int i, j, bi, bj, b = 0;
-	for(i = 0; i < HEIGHT; i++) { // 0~19
-		printf("│");
-		for (j = 0; j < WIDTH; j++) { // 0~9
-			int is_block = 0;
-
-			for (bi = 0; bi < 4; bi++) {
-				for (bj = 0; bj < 4; bj++) {
-					if(blocks[block_number][block_state][bi][bj]) {
-						if (i == x + bi && j == x +bj) {
-							is_block = 1;
-						}
-					}
-				}
-			}
-			if (is_block) printf("🟥"); // ■
-			else if (tetris_table[i][j]) printf("🟥"); // □
-			else printf("  ");
-		}
-		printf("│\n");
-	}
-	printf("└");
-	for(b = 0; b < WIDTH; b++) printf("──");
-	printf("┘");
-}
-
-void move_block(int dir) {
-	int nx = x;
-	int ny = y;
-	int nrot = block_state;
-
-	if(dir == LEFT) nx--;
-	else if (dir == RIGHT) nx++;
-	else if (dir == DOWN) ny++;
-	else if (dir == ROTATE)  nrot = (nrot + 1) % 4;
-
-	if (!check_collision(nx, ny, nrot)) {
-		x = nx;
-		y = ny;
-		block_state = nrot;
-	}
-}
-
-int check_collision (int nx, int ny, int nrot) {
-	int i, j = 0;
-	for(i = 0; i < 4; i++) {
-		for (j = 0; j < 4; j++) {
-			if (blocks[block_number][nrot][i][j]) {
-				int tx = nx + j;
-				int ty = ny + i;
-
-				if (tx < 0 || tx >= WIDTH || ty < 0 || ty >= HEIGHT)
-					return 1;
-				if (tetris_table[ty][tx])
-					return 1;
-			}
-		}
-	}
-	return 0;
-}
-
-void fix_block() {
-	int i, j = 0;
-	for(i = 0; i < 4; i++) {
-		for(j = 0; j < 4; j++) {
-			if(blocks[block_number][block_state][i][j]) {
-				int tx = y + 1;
-				int ty = x + j;
-				if (tx >= 0 && tx < HEIGHT && ty >= 0 && ty < WIDTH) tetris_table[tx][ty] = 1;
-			}
-		}
-	}
-}
-
-void clear_lines() {
-	int i, j, k = 0;
-	for(i = 0; i < HEIGHT; i++) {
-		int full = 1;
-		for(j = 0; j < WIDTH; j++) {
-			if (tetris_table[i][j] == 0) {
-				full = 0;
-				break;
-			}
-		}
-		if(full) {
-			// 아래로 한 줄씩 내리기
-			for(k = i; k > 0; k--) {
-				for(j = 0; j < WIDTH; j++) {
-					tetris_table[k][j] = tetris_table[k-1][j];
-				}
-			} // 맨 윗줄 지우기
-			for(j=0; j < WIDTH; j++) {
-				tetris_table[0][j] = 0;
-			}
-		}
-	}
-}
-
-int spawn_new_block() {
-	block_number = rand() % 7;
-	block_state = 0;
-	x = 3; y = 0;
-	
-	if(check_collision(x, y, block_state)) return 0;
-	
-	return 1;
-}
-
 /* 게임 종료 때마다
  * 이름과 득점수와 
  * 날짜와 시간과 순위를 저장
  * */
-static struct result
-{
+
+static struct result {
 	char name[30];
 	long point;
-	int year;
-	int month;
-	int day;
-	int hour;
-	int min;
-	int rank;
+	int year, month, day,
+		hour, min, rank;
 } temp_result;
+
 long point = 0; /* 현재 점수*/
 int best_point = 0; /* 최고 점수*/
 
@@ -311,7 +194,204 @@ int game_start() {
 	sleep_ms(100); // 잠깐 rest
 	}
 	show_cursor();
+	save_result(point);
 	return 1; // 다시 메뉴로
+}
+
+void draw_block() {
+	printf("\033[H");
+	int i, j, bi, bj, b = 0;
+	for(i = 0; i < HEIGHT; i++) { // 0~19
+		printf("🔳");
+		for (j = 0; j < WIDTH; j++) { // 0~9
+			int is_block = 0;
+
+			for (bi = 0; bi < 4; bi++) {
+				for (bj = 0; bj < 4; bj++) {
+					if(blocks[block_number][block_state][bi][bj]) {
+						if (i == y + bi && j == x + bj) {
+							is_block = 1;
+						}
+					}
+				}
+			}
+			if (is_block) printf("🟥"); // 🟥 
+			else if (tetris_table[i][j]) printf("🟦"); // 🟦 
+			else printf("  ");
+		}
+		printf("🔳\n");
+	}
+	printf("🔳");
+	for(b = 0; b < WIDTH; b++) printf("🔳");
+	printf("🔳");
+}
+
+int check_collision (int nx, int ny, int nrot) {
+	int i, j = 0;
+	for(i = 0; i < 4; i++) {
+		for (j = 0; j < 4; j++) {
+			if (blocks[block_number][nrot][i][j]) {
+				int tx = nx + j;
+				int ty = ny + i;
+
+				if (tx < 0 || tx >= WIDTH || ty < 0 || ty >= HEIGHT)
+					return 1;
+				if (tetris_table[ty][tx])
+					return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+void move_block(int dir) {
+	int nx = x;
+	int ny = y;
+	int nrot = block_state;
+
+	if(dir == LEFT) nx--;
+	else if (dir == RIGHT) nx++;
+	else if (dir == DOWN) ny++;
+	else if (dir == ROTATE)  nrot = (nrot + 1) % 4;
+
+	if (!check_collision(nx, ny, nrot)) {
+		x = nx;
+		y = ny;
+		block_state = nrot;
+	}
+}
+
+void fix_block() {
+	int i, j = 0;
+	for(i = 0; i < 4; i++) {
+		for(j = 0; j < 4; j++) {
+			if(blocks[block_number][block_state][i][j]) {
+				int ty = y + i;
+				int tx = x + j;
+				if (ty >= 0 && ty < HEIGHT && tx >= 0 && tx < WIDTH) tetris_table[ty][tx] = 1;
+			}
+		}
+	}
+}
+
+void clear_lines() {
+	int i, j, k = 0;
+	for(i = 0; i < HEIGHT; i++) {
+		int full = 1;
+		for(j = 0; j < WIDTH; j++) {
+			if (tetris_table[i][j] == 0) {
+				full = 0;
+				break;
+			}
+		}
+		if(full) {
+			get_point();
+			// 아래로 한 줄씩 내리기
+			for(k = i; k > 0; k--) {
+				for(j = 0; j < WIDTH; j++) {
+					tetris_table[k][j] = tetris_table[k-1][j];
+				}
+			} // 맨 윗줄 지우기
+			for(j=0; j < WIDTH; j++) {
+				tetris_table[0][j] = 0;
+			}
+		}
+	}
+}
+
+int spawn_new_block() {
+	block_number = rand() % 7;
+	block_state = 0;
+	x = 3; y = 0;
+	
+	if(check_collision(x, y, block_state)) return 0;
+	
+	return 1;
+}
+
+long get_point() {
+	point += 100;
+	return point;
+}
+
+void save_result(int score) {
+	FILE *fp = fopen("records.txt", "a");
+	if(!fp) return;
+
+	
+	printf("\n 게임 종료! 이름을 입력하세요!: ");
+	scanf("%s", temp_result.name);
+
+	time_t t = time(NULL);
+	struct tm *tm_info = localtime(&t);
+
+	temp_result.point = point;
+	temp_result.year = tm_info->tm_year+1900;
+	temp_result.month = tm_info->tm_mon+1; 
+	temp_result.day = tm_info->tm_mday;
+	temp_result.hour = tm_info->tm_hour;
+	temp_result.min = tm_info->tm_min;
+
+	fprintf(fp, "%s %d %d-%02d-%02d %02d:%02d\n", 
+		temp_result.name, temp_result.point, temp_result.year, temp_result.month, 
+		temp_result.day, temp_result.hour, temp_result.min);
+
+	fclose(fp);
+}
+
+void print_result() {
+	FILE *fp = fopen("records.txt", "r");
+	if(!fp) {
+		printf("▶ 기록이 없습니다.\n");
+		getchar(); getchar();
+		return;
+	}
+
+	printf("\n=== 기록 조회 ===\n\n");
+	char line[100];
+	while (fgets(line, sizeof(line), fp)) {
+		printf("%s", line);
+	}
+	fclose(fp);
+	printf("\n계속하려면 Enter...");
+	getchar(); getchar();
+}
+
+void search_result() {
+	FILE *fp = fopen("records.txt", "r");
+	if(!fp) {
+		printf("\n▶ 기록 파일이 없습니다.\n");
+		getchar(); getchar();
+		return;
+	}
+
+	char target_name[30];
+	printf("\n▶ 검색할 플레이어 이름 입력: ");
+	fgets(target_name, sizeof(target_name), stdin);
+	target_name[strcspn(target_name, "\n")] = '\0';
+	// scanf("%s", target_name);
+	printf("\n=== %s의 기록 ===\n", target_name);
+
+	int found = 0;
+	
+	while (fscanf(fp, "%s %d %d-%d-%d %d:%d",
+			temp_result.name, &temp_result.point, &temp_result.year, &temp_result.month,
+			&temp_result.day, &temp_result.hour, &temp_result.min) == 7) {
+				if (strcmp(temp_result.name, target_name) == 0) {
+					printf("▶ %s | %d점 | %04d-%02d-%02d %02d:%02d\n", 
+					temp_result.name, temp_result.point, temp_result.year, temp_result.month,
+					temp_result.day, temp_result.hour, temp_result.min);
+
+					found = 1;
+				}
+	}
+	if(!found) {
+		printf("▶ 해당 플레이어 기록 없음\n");
+	}
+
+	fclose(fp);
+	printf("\n계속하려면 Enter...");
+	getchar();
 }
 
 
@@ -330,12 +410,10 @@ int main(void) {
 			game = GAME_START;
 			menu = game_start();
 		} else if(menu == 2) {
-			printf("▶ [기록보기] 기능은 아직 미구현입니다.\n");
-			getchar(); getchar();
+			getchar();
 			search_result();
 		} else if(menu == 3) {
-			printf("▶ [결과 출력] 기능은 아직 미구현입니다.\n");
-			getchar(); getchar();
+			getchar();
 			print_result();
 		}
 		else if(menu == 4) {
