@@ -47,7 +47,8 @@ void clear_screen() {
     #ifdef _WIN32
         system("cls");
     #else 
-        system("clear");
+        printf("\033[2J");
+        printf("\033[H");
     #endif // _WIN32 (47)
 }
 
@@ -57,7 +58,13 @@ void sleep_ms(int ms) {
         Sleep(ms);
     #else
         usleep(ms * 1000);
-    #endif // _WIN32 (56)
+    #endif // _WIN32 (57)
+}
+void hide_cursor() {
+    printf("\033[?25l");
 }
 
+void show_cursor() {
+    printf("\033[?25h");
+}
 #endif // PLATFORM_H (2)
