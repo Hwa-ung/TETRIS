@@ -1,27 +1,27 @@
-# 대상 실행 파일 이름
+# 파일 이름 설정
 TARGET = tetris
+SRC = TETRIS_ver1.c
+OBJ = $(SRC:.c=.o)
 
-# 소스 파일
-SRCS = TETRIS_ver1.c
+# 플랫폼 판별
+ifeq ($(OS),Windows_NT)
+	CC := $(shell which gcc)
+	RM = del /Q
+	EXEC = $(TARGET).exe
+else
+	# macOS / Linux
+	UNAME_S := $(shell uname -s)
+	CC = gcc
+	RM = rm -f
+	EXEC = $(TARGET)
+endif
 
-# 헤더 포함 경로 (필요시 추가 가능)
-INCLUDES =
-
-# 컴파일러 및 플래그
-CC = gcc
 CFLAGS = -Wall -g
 
-# 링크 플래그 (없으면 비워둠)
-LDFLAGS =
+all: $(EXEC)
 
-# 기본 빌드 규칙
-$(TARGET): $(SRCS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS) $(LDFLAGS)
-
-# 실행
-run: $(TARGET)
-	./$(TARGET)
-
-# 클린업
+$(EXEC): $(SRC)
+	$(CC) $(CFLAGS) -o $(EXEC) $(SRC)
+	
 clean:
-	rm -f $(TARGET)
+	$(RM) $(EXEC)

@@ -44,7 +44,7 @@ void fix_block();
 void clear_lines();
 int spawn_new_block();
 long get_point();
-void save_result();
+void save_result(int point);
 void print_result();
 void search_result();
 
@@ -314,7 +314,7 @@ long get_point() {
 	return point;
 }
 
-void save_result(int score) {
+void save_result(int point) {
 	FILE *fp = fopen("records.txt", "a");
 	if(!fp) return;
 
