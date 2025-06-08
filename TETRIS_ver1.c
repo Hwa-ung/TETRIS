@@ -119,12 +119,12 @@ int x = 3, y = 0; /*블록의 최초 위치*/
 
 static struct result {
 	char name[30];
-	long point;
+	int point;
 	int year, month, day,
 		hour, min, rank;
 } temp_result;
 
-long point = 0; /* 현재 점수*/
+int point = 0; /* 현재 점수*/
 int best_point = 0; /* 최고 점수*/
 
 /* 메뉴 표시*/
