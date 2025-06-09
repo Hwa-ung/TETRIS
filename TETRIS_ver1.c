@@ -34,6 +34,16 @@
 #define GAME_START 1
 #define GAME_END 0
 
+#define MAX_RECORDS 20
+
+typedef struct {
+	char name[30];
+	long point;
+	int year, month, day;
+	int hour, min;
+} Record;
+
+
 int game = GAME_END; /*게임 시작, 게임 종료*/
 
 int display_menu(); /* 메뉴 표시*/
@@ -118,13 +128,6 @@ int x = 3, y = 0; /*블록의 최초 위치*/
  * 날짜와 시간과 순위를 저장
  * */
 
-static struct result {
-	char name[30];
-	int point;
-	int year, month, day,
-		hour, min, rank;
-} temp_result;
-
 int point = 0; /* 현재 점수*/
 int best_point = 0; /* 최고 점수*/
 
@@ -157,7 +160,8 @@ int display_menu() {
 
 int game_start() {
 	srand(time(NULL));
-	block_number = rand() % 7;
+	next_block_number = rand() % 7;
+	spawn_new_block();
 	block_state = 0;
 	x = 3; y = 0;
 	int drop_timer = 0;
@@ -202,8 +206,21 @@ int game_start() {
 void draw_block() {
 	printf("\033[H");
 	int i, j, bi, bj, b = 0;
+
+	printf("\n\n SCORE: %d\n", point);
+	printf("NEXT BLOCK: \n");
+
+	for(i = 0; i < 4; i++) {
+		printf("  ");
+		for(j = 0; j < 4; j++) {
+			if(blocks[next_block_number][0][i][j]) printf("🟥");
+			else printf("  ");
+		}
+		printf("\n");
+	}
+
 	for(i = 0; i < HEIGHT; i++) { // 0~19
-		printf("◻️"); // ■
+		printf("⬜️"); // ■
 		for (j = 0; j < WIDTH; j++) { // 0~9
 			int is_block = 0;
 
@@ -220,11 +237,11 @@ void draw_block() {
 			else if (tetris_table[i][j]) printf("🟦"); // 🟦 □
 			else printf("  ");
 		}
-		printf("◻️\n");
+		printf("⬜️\n"); // 🔲 ◻️ ⬜️
 	}
-	printf("◻️");
-	for(b = 0; b < WIDTH; b++) printf("◻️");
-	printf("◻️");
+	printf("⬜️");
+	for(b = 0; b < WIDTH; b++) printf("⬜️");
+	printf("⬜️");
 }
 
 int check_collision (int nx, int ny, int nrot) {
@@ -301,7 +318,8 @@ void clear_lines() {
 }
 
 int spawn_new_block() {
-	block_number = rand() % 7;
+	block_number = next_block_number;
+	next_block_number = rand() % 7;
 	block_state = 0;
 	x = 3; y = 0;
 	
@@ -316,27 +334,64 @@ long get_point() {
 }
 
 void save_result(int point) {
-	FILE *fp = fopen("records.txt", "a");
-	if(!fp) return;
+	Record queue[MAX_RECORDS + 1];  // +1: 새 기록 임시 저장
+	int count = 0;
 
-	
+	// 1. 기존 기록 불러오기
+	FILE *fp = fopen("records.txt", "r");
+	if (fp) {
+		while (fscanf(fp, "%s %ld %d-%d-%d %d:%d",
+			queue[count].name,
+			&queue[count].point,
+			&queue[count].year,
+			&queue[count].month,
+			&queue[count].day,
+			&queue[count].hour,
+			&queue[count].min) == 7) {
+			
+			count++;
+			if (count >= MAX_RECORDS) break;  // 최대 20개만
+		}
+		fclose(fp);
+	}
+
+	// 2. 새 기록 입력
+	Record new_record;
 	printf("\n Game over! Enter the name!: ");
-	scanf("%s", temp_result.name);
+	scanf("%s", new_record.name);
 
 	time_t t = time(NULL);
 	struct tm *tm_info = localtime(&t);
 
-	temp_result.point = point;
-	temp_result.year = tm_info->tm_year+1900;
-	temp_result.month = tm_info->tm_mon+1; 
-	temp_result.day = tm_info->tm_mday;
-	temp_result.hour = tm_info->tm_hour;
-	temp_result.min = tm_info->tm_min;
+	new_record.point = point;
+	new_record.year = tm_info->tm_year + 1900;
+	new_record.month = tm_info->tm_mon + 1;
+	new_record.day = tm_info->tm_mday;
+	new_record.hour = tm_info->tm_hour;
+	new_record.min = tm_info->tm_min;
 
-	fprintf(fp, "%s %d %d-%02d-%02d %02d:%02d\n", 
-		temp_result.name, temp_result.point, temp_result.year, temp_result.month, 
-		temp_result.day, temp_result.hour, temp_result.min);
+	// 3. 큐에 push (가득 찼으면 shift)
+	if (count == MAX_RECORDS) {
+		// shift left: 맨 앞 기록 pop
+		for (int i = 1; i < MAX_RECORDS; i++) {
+			queue[i - 1] = queue[i];
+		}
+		queue[MAX_RECORDS - 1] = new_record;
+		count = MAX_RECORDS;
+	} else {
+		queue[count++] = new_record;
+	}
 
+	// 4. 전체 기록 다시 저장 (덮어쓰기)
+	fp = fopen("records.txt", "w");
+	if (!fp) return;
+
+	for (int i = 0; i < count; i++) {
+		fprintf(fp, "%s %ld %d-%02d-%02d %02d:%02d\n",
+			queue[i].name, queue[i].point,
+			queue[i].year, queue[i].month, queue[i].day,
+			queue[i].hour, queue[i].min);
+	}
 	fclose(fp);
 }
 
@@ -347,18 +402,35 @@ void print_result() {
 		getchar(); getchar();
 		return;
 	}
+	Record r[100];
+	int count = 0;
+	int i = 0;
+	while(fscanf(fp, "%s %ld %d-%d-%d %d:%d", 
+		r[count].name, &r[count].point, &r[count].year, &r[count].month, &r[count].day,
+		&r[count].hour, &r[count].min) == 7) {
+			count++;
+		}
+	fclose(fp);
 
-	printf("\n=== Histoty View ===\n\n");
+	printf("\n=== Histoty View (Max: %d)===\n\n", count);
+
+	for(i = 0; i < count; i++) {
+		printf("[%d]\t %s\t | point: %ld\t| %04d-%02d-%02d | %02d:%02d\n", i + 1, 
+				r[i].name, r[i].point, r[i].year, r[i].month, r[i].day, r[i].hour, r[i].min);
+	}
+	/*
 	char line[100];
 	while (fgets(line, sizeof(line), fp)) {
 		printf("%s", line);
 	}
-	fclose(fp);
+	*/
+	
 	printf("\nIf you wanna continue Enter...");
 	getchar(); getchar();
 }
 
 void search_result() {
+	Record r;
 	FILE *fp = fopen("records.txt", "r");
 	if(!fp) {
 		printf("\n No history \n");
@@ -375,13 +447,13 @@ void search_result() {
 
 	int found = 0;
 	
-	while (fscanf(fp, "%s %d %d-%d-%d %d:%d",
-			temp_result.name, &temp_result.point, &temp_result.year, &temp_result.month,
-			&temp_result.day, &temp_result.hour, &temp_result.min) == 7) {
-				if (strcmp(temp_result.name, target_name) == 0) {
-					printf(" %s | %dpoint | %04d-%02d-%02d %02d:%02d\n", 
-					temp_result.name, temp_result.point, temp_result.year, temp_result.month,
-					temp_result.day, temp_result.hour, temp_result.min);
+	while (fscanf(fp, "%s %ld %d-%d-%d %d:%d",
+			r.name, &r.point, &r.year, &r.month,
+			&r.day, &r.hour, &r.min) == 7) {
+				if (strcmp(r.name, target_name) == 0) {
+					printf(" %s\t | %ldpoint\t | %04d-%02d-%02d %02d:%02d\n", 
+					r.name, r.point, r.year, r.month,
+					r.day, r.hour, r.min);
 
 					found = 1;
 				}
@@ -421,5 +493,6 @@ int main(void) {
 			exit(0);
 		}
 	}
+	clear_screen();
 	return 0;
 }
