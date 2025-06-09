@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <time.h>
+#include <locale.h>
 
 /* 타이머  */
 #define CCHAR 0
@@ -202,7 +203,7 @@ void draw_block() {
 	printf("\033[H");
 	int i, j, bi, bj, b = 0;
 	for(i = 0; i < HEIGHT; i++) { // 0~19
-		printf("🔳");
+		printf("◻️"); // ■
 		for (j = 0; j < WIDTH; j++) { // 0~9
 			int is_block = 0;
 
@@ -215,15 +216,15 @@ void draw_block() {
 					}
 				}
 			}
-			if (is_block) printf("🟥"); // 🟥 
-			else if (tetris_table[i][j]) printf("🟦"); // 🟦 
+			if (is_block) printf("🟥"); // 🟥 ■ 🔲⬛
+			else if (tetris_table[i][j]) printf("🟦"); // 🟦 □
 			else printf("  ");
 		}
-		printf("🔳\n");
+		printf("◻️\n");
 	}
-	printf("🔳");
-	for(b = 0; b < WIDTH; b++) printf("🔳");
-	printf("🔳");
+	printf("◻️");
+	for(b = 0; b < WIDTH; b++) printf("◻️");
+	printf("◻️");
 }
 
 int check_collision (int nx, int ny, int nrot) {
@@ -319,7 +320,7 @@ void save_result(int point) {
 	if(!fp) return;
 
 	
-	printf("\n 게임 종료! 이름을 입력하세요!: ");
+	printf("\n Game over! Enter the name!: ");
 	scanf("%s", temp_result.name);
 
 	time_t t = time(NULL);
@@ -342,35 +343,35 @@ void save_result(int point) {
 void print_result() {
 	FILE *fp = fopen("records.txt", "r");
 	if(!fp) {
-		printf("▶ 기록이 없습니다.\n");
+		printf(" No history \n");
 		getchar(); getchar();
 		return;
 	}
 
-	printf("\n=== 기록 조회 ===\n\n");
+	printf("\n=== Histoty View ===\n\n");
 	char line[100];
 	while (fgets(line, sizeof(line), fp)) {
 		printf("%s", line);
 	}
 	fclose(fp);
-	printf("\n계속하려면 Enter...");
+	printf("\nIf you wanna continue Enter...");
 	getchar(); getchar();
 }
 
 void search_result() {
 	FILE *fp = fopen("records.txt", "r");
 	if(!fp) {
-		printf("\n▶ 기록 파일이 없습니다.\n");
+		printf("\n No history \n");
 		getchar(); getchar();
 		return;
 	}
 
 	char target_name[30];
-	printf("\n▶ 검색할 플레이어 이름 입력: ");
+	printf("\n Enter the name of the player: ");
 	fgets(target_name, sizeof(target_name), stdin);
 	target_name[strcspn(target_name, "\n")] = '\0';
 	// scanf("%s", target_name);
-	printf("\n=== %s의 기록 ===\n", target_name);
+	printf("\n=== %s's record ===\n", target_name);
 
 	int found = 0;
 	
@@ -378,7 +379,7 @@ void search_result() {
 			temp_result.name, &temp_result.point, &temp_result.year, &temp_result.month,
 			&temp_result.day, &temp_result.hour, &temp_result.min) == 7) {
 				if (strcmp(temp_result.name, target_name) == 0) {
-					printf("▶ %s | %d점 | %04d-%02d-%02d %02d:%02d\n", 
+					printf(" %s | %dpoint | %04d-%02d-%02d %02d:%02d\n", 
 					temp_result.name, temp_result.point, temp_result.year, temp_result.month,
 					temp_result.day, temp_result.hour, temp_result.min);
 
@@ -386,11 +387,11 @@ void search_result() {
 				}
 	}
 	if(!found) {
-		printf("▶ 해당 플레이어 기록 없음\n");
+		printf(" No player histoty \n");
 	}
 
 	fclose(fp);
-	printf("\n계속하려면 Enter...");
+	printf("\nIf you wanna continue Enter...");
 	getchar();
 }
 
@@ -401,7 +402,7 @@ void search_result() {
 /// @return 
 int main(void) {
 	int menu = 1;
-
+	setlocale(LC_ALL, "");
 	while(menu) {
 		menu = display_menu();
 

@@ -17,17 +17,33 @@ int my_getch() {
     #ifdef _WIN32
         return _getch();
     #else
-        struct temios oldt, newt;
+        struct termios oldt, newt;
         int ch;
-        tcgetattr(STDIN_FILENO, &oldt);
+
+        // 현재 터미널 속성 가져오기
+        if (tcgetattr(STDIN_FILENO, &oldt) == -1) return -1;
+
+        // 새 설정 복사
         newt = oldt;
+
+        // 캐노니컬 모드/에코 끄고, 최소 입력/시간 설정
         newt.c_lflag &= ~(ICANON | ECHO);
-        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-        ch = getchar();
-        tcsetattr(STDIN_FILENO, TCSANOW< &oldt);
+        newt.c_cc[VMIN] = 1;
+        newt.c_cc[VTIME] = 0;
+
+        // 새 설정 적용
+        if (tcsetattr(STDIN_FILENO, TCSANOW, &newt) == -1) return -1;
+
+        // 문자 하나 읽기 (엔터 없이 즉시 입력)
+        if (read(STDIN_FILENO, &ch, 1) < 0) ch = -1;
+
+        // 원래 설정 복원
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+
         return ch;
-    #endif // _WIN32 (17)
+    #endif
 }
+
 
 // kbhit
 int my_kbhit() {
@@ -37,9 +53,9 @@ int my_kbhit() {
         struct timeval tv = {0L, 0L};
         fd_set fds;
         FD_ZERO(&fds);
-        FD_SET(0, &fds);
+        FD_SET(STDIN_FILENO, &fds);
         return select(1, &fds, NULL, NULL, &tv);
-    #endif // _WIN32 (34)
+    #endif // _WIN32 (40)
 }
 
 // clear screen
@@ -49,7 +65,7 @@ void clear_screen() {
     #else 
         printf("\033[2J");
         printf("\033[H");
-    #endif // _WIN32 (47)
+    #endif // _WIN32 (53)
 }
 
 // sleep (millisecond)
@@ -58,7 +74,7 @@ void sleep_ms(int ms) {
         Sleep(ms);
     #else
         usleep(ms * 1000);
-    #endif // _WIN32 (57)
+    #endif // _WIN32 (63)
 }
 void hide_cursor() {
     printf("\033[?25l");
