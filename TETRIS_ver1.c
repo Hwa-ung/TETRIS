@@ -175,6 +175,8 @@ int game_start() {
 	
 		if (my_kbhit()) {
 			char key = my_getch();
+			// fflush(stdout);
+
 			if(key == 'p' || key == 'P') break;
 			else if (key == 'j' || key == 'J') move_block(LEFT);
 			else if (key == 'l' || key == 'L') move_block(RIGHT);
@@ -416,7 +418,7 @@ void print_result() {
 		}
 	fclose(fp);
 
-	printf("\n=== Histoty View (Max: %d)===\n\n", count);
+	printf("\n\t===== Histoty View (Max: %d)=====\n\n", count);
 
 	for(i = 0; i < count; i++) {
 		printf("[%d]\t %s\t | point: %ld\t| %04d-%02d-%02d | %02d:%02d\n", i + 1, 
@@ -447,7 +449,7 @@ void search_result() {
 	fgets(target_name, sizeof(target_name), stdin);
 	target_name[strcspn(target_name, "\n")] = '\0';
 	// scanf("%s", target_name);
-	printf("\n=== %s's record ===\n", target_name);
+	printf("\n\t===== %s's record =====\t\n", target_name);
 
 	int found = 0;
 	

@@ -4,77 +4,58 @@
 #ifdef _WIN32
     #include <conio.h>
     #include <Windows.h>
+
+    int my_getch() {
+        return _getch();
+    }
+    int my_kbhit() {
+        return _kbhit();
+    }
+    void clear_screen() {
+        system("cls");
+    }
+    void sleep_ms(int ms) {
+        Sleep(ms);
+    }
 #else
     #include <termios.h>
     #include <unistd.h>
     #include <fcntl.h>
     #include <stdio.h>
     #include <sys/select.h>
-#endif // _WIN32 (4)
+    #include <time.h>
 
-// getch
-int my_getch() {
-    #ifdef _WIN32
-        return _getch();
-    #else
+    int my_getch() {
         struct termios oldt, newt;
         int ch;
 
-        // 현재 터미널 속성 가져오기
-        if (tcgetattr(STDIN_FILENO, &oldt) == -1) return -1;
-
-        // 새 설정 복사
+        tcgetattr(STDIN_FILENO, &oldt);
         newt = oldt;
-
-        // 캐노니컬 모드/에코 끄고, 최소 입력/시간 설정
         newt.c_lflag &= ~(ICANON | ECHO);
-        newt.c_cc[VMIN] = 1;
-        newt.c_cc[VTIME] = 0;
+        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 
-        // 새 설정 적용
-        if (tcsetattr(STDIN_FILENO, TCSANOW, &newt) == -1) return -1;
+        ch = getchar();
 
-        // 문자 하나 읽기 (엔터 없이 즉시 입력)
-        if (read(STDIN_FILENO, &ch, 1) < 0) ch = -1;
-
-        // 원래 설정 복원
         tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-
         return ch;
-    #endif
-}
-
-// kbhit
-int my_kbhit() {
-    #ifdef _WIN32
-        return _kbhit();
-    #else
+    }
+    int my_kbhit() {
         struct timeval tv = {0L, 0L};
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(STDIN_FILENO, &fds);
         return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0;
-    #endif // _WIN32 (40)
-}
-
-// clear screen
-void clear_screen() {
-    #ifdef _WIN32
-        system("cls");
-    #else 
+    }
+    void clear_screen() {
         printf("\033[2J\033[H");
         fflush(stdout);
-    #endif // _WIN32 (53)
-}
-
-// sleep (millisecond)
-void sleep_ms(int ms) {
-    #ifdef _WIN32
-        Sleep(ms);
-    #else
+    }
+    void sleep_ms(int ms) {
         usleep(ms * 1000);
-    #endif // _WIN32 (63)
-}
+    }
+
+#endif // _WIN32 (4)
+
 void hide_cursor() {
     printf("\033[?25l");
     fflush(stdout);
