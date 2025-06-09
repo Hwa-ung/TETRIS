@@ -175,7 +175,8 @@ int game_start() {
 	
 		if (my_kbhit()) {
 			char key = my_getch();
-			// fflush(stdout);
+			printf("\nDEBUG: key='%c' (%d)\n", key, key);
+			fflush(stdout);
 
 			if(key == 'p' || key == 'P') break;
 			else if (key == 'j' || key == 'J') move_block(LEFT);
@@ -405,7 +406,7 @@ void print_result() {
 	FILE *fp = fopen("records.txt", "r");
 	if(!fp) {
 		printf(" No history \n");
-		getchar(); getchar();
+		getchar();
 		return;
 	}
 	Record r[100];
@@ -432,7 +433,7 @@ void print_result() {
 	*/
 	
 	printf("\nIf you wanna continue Enter...");
-	getchar(); getchar();
+	getchar();
 }
 
 void search_result() {
@@ -440,7 +441,7 @@ void search_result() {
 	FILE *fp = fopen("records.txt", "r");
 	if(!fp) {
 		printf("\n No history \n");
-		getchar(); getchar();
+		getchar();
 		return;
 	}
 
