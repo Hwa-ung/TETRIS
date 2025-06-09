@@ -213,17 +213,17 @@ void draw_block() {
 	for(i = 0; i < 4; i++) {
 		printf("  ");
 		for(j = 0; j < 4; j++) {
-			if(blocks[next_block_number][0][i][j]) printf("##"); //■■
+			if(blocks[next_block_number][0][i][j]) printf("🟩"); //■■
 			else printf("  ");
 		}
 		printf("\n");
 	}
-	printf("##");
-	for(b = 1; b < WIDTH; b++) printf("##"); // 🔳 ⬛ 🟪 🟩
-	printf("####\n");
+	printf("🟩");
+	for(b = 1; b < WIDTH; b++) printf("🟩"); // 🔳 ⬛ 🟪 🟩
+	printf("🟩🟩\n");
 	
 	for(i = 1; i < HEIGHT; i++) { // 1~20
-		printf("##"); // ■ ■ ⬜️
+		printf("🟩"); // ■ ■ ⬜️
 		for (j = 0; j < WIDTH; j++) { // 0~9
 			int is_block = 0;
 
@@ -236,15 +236,15 @@ void draw_block() {
 					}
 				}
 			}
-			if (is_block) printf("##"); // █ 떨어지는 블럭 🔳 \033[36m██\033[0m
-			else if (tetris_table[i][j]) printf("##"); // 고정 블럭 ⬛ \033[90m██\033[0m
+			if (is_block) printf("🔳"); // █ 떨어지는 블럭 🔳 \033[36m██\033[0m
+			else if (tetris_table[i][j]) printf("🔳"); // 고정 블럭 ⬛ \033[90m██\033[0m
 			else printf("  ");
 		}
-		printf("##\n"); // 🟪 ██
+		printf("🟩\n"); // 🟪 ██
 	}
-	printf("##");
-	for(b = 0; b < WIDTH; b++) printf("##");
-	printf("##");
+	printf("🟩");
+	for(b = 0; b < WIDTH; b++) printf("🟩");
+	printf("🟩");
 
 }
 
