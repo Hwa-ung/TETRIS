@@ -43,27 +43,52 @@
     #include <stdio.h>
 
     int my_getch() {
-        struct termios oldt, newt;
-        int ch;
+    struct termios oldt, newt;
+    int oldf;
+    int ch;
 
-        tcgetattr(STDIN_FILENO, &oldt);
-        newt = oldt;
-        newt.c_lflag &= ~(ICANON | ECHO);
-        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO); // 즉시 입력 + 입력 안 보이게
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 
-        ch = getchar();
+    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, oldf & ~O_NONBLOCK);  // 차단 모드 설정
 
-        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-        return ch;
-    }
+    ch = getchar();
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    fcntl(STDIN_FILENO, F_SETFL, oldf);  // 원래 상태 복구
+
+    return ch;
+}
 
     int my_kbhit() {
-        struct timeval tv = {0L, 0L};
-        fd_set fds;
-        FD_ZERO(&fds);
-        FD_SET(STDIN_FILENO, &fds);
-        return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0;
+    struct termios oldt, newt;
+    int ch;
+    int oldf;
+    int hit = 0;
+
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+
+    ch = getchar();
+
+    if (ch != EOF) {
+        ungetc(ch, stdin);  // 입력 버퍼에 다시 넣기
+        hit = 1;
     }
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    fcntl(STDIN_FILENO, F_SETFL, oldf);
+
+    return hit;
+}
+
 
     void clear_screen() {
         printf("\033[2J\033[H");
