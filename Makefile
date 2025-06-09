@@ -12,7 +12,7 @@ ifeq ($(OS),Windows_NT)
 		CC = gcc
 	else
 		RUN = $(EXEC)
-		RM = del /Q
+		RM = cmd /c "del /Q TETRIS_ver1.exe"
 		EXEC = $(TARGET).exe
 		CC = gcc
 	endif

@@ -44,7 +44,6 @@ int my_getch() {
     #endif
 }
 
-
 // kbhit
 int my_kbhit() {
     #ifdef _WIN32
@@ -54,7 +53,7 @@ int my_kbhit() {
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(STDIN_FILENO, &fds);
-        return select(1, &fds, NULL, NULL, &tv);
+        return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0;
     #endif // _WIN32 (40)
 }
 
@@ -63,8 +62,8 @@ void clear_screen() {
     #ifdef _WIN32
         system("cls");
     #else 
-        printf("\033[2J");
-        printf("\033[H");
+        printf("\033[2J\033[H");
+        fflush(stdout);
     #endif // _WIN32 (53)
 }
 
@@ -78,9 +77,11 @@ void sleep_ms(int ms) {
 }
 void hide_cursor() {
     printf("\033[?25l");
+    fflush(stdout);
 }
 
 void show_cursor() {
     printf("\033[?25h");
+    fflush(stdout);
 }
 #endif // PLATFORM_H (2)

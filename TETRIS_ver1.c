@@ -121,7 +121,7 @@ int tetris_table[HEIGHT][WIDTH] = {0};
 int block_number = 0;  /*블록 번호*/
 int next_block_number = 0; /*다음 블록 번호 */
 int block_state = 0; /*블록 상태, 왼쪽, 오른쪽, 아래, 회전*/
-int x = 3, y = 1; /*블록의 최초 위치*/
+int x = 3, y = 2; /*블록의 최초 위치*/
 
 /* 게임 종료 때마다
  * 이름과 득점수와 
@@ -162,7 +162,7 @@ int game_start() {
 	srand(time(NULL));
 	next_block_number = rand() % 7;
 	block_state = 0;
-	x = 3; y = 1;
+	x = 3; y = 2;
 	spawn_new_block();
 	int drop_timer = 0;
 
@@ -213,17 +213,17 @@ void draw_block() {
 	for(i = 0; i < 4; i++) {
 		printf("  ");
 		for(j = 0; j < 4; j++) {
-			if(blocks[next_block_number][0][i][j]) printf("██"); //■■
+			if(blocks[next_block_number][0][i][j]) printf("##"); //■■
 			else printf("  ");
 		}
 		printf("\n");
 	}
-	printf("██");
-	for(b = 1; b < WIDTH; b++) printf("██");
-	printf("██");
-
+	printf("##");
+	for(b = 1; b < WIDTH; b++) printf("##"); // 🔳 ⬛ 🟪 🟩
+	printf("####\n");
+	
 	for(i = 1; i < HEIGHT; i++) { // 1~20
-		printf("██"); // ■ ■ ⬜️
+		printf("##"); // ■ ■ ⬜️
 		for (j = 0; j < WIDTH; j++) { // 0~9
 			int is_block = 0;
 
@@ -236,15 +236,16 @@ void draw_block() {
 					}
 				}
 			}
-			if (is_block) printf("\033[36m██\033[0m"); // █ 떨어지는 블럭
-			else if (tetris_table[i][j]) printf("\033[90m██\033[0m"); // 고정 블럭
+			if (is_block) printf("##"); // █ 떨어지는 블럭 🔳 \033[36m██\033[0m
+			else if (tetris_table[i][j]) printf("##"); // 고정 블럭 ⬛ \033[90m██\033[0m
 			else printf("  ");
 		}
-		printf("██\n"); // 🔲 ◻️ ⬜️
+		printf("##\n"); // 🟪 ██
 	}
-	printf("██");
-	for(b = 0; b < WIDTH; b++) printf("██");
-	printf("██");
+	printf("##");
+	for(b = 0; b < WIDTH; b++) printf("##");
+	printf("##");
+
 }
 
 int check_collision (int nx, int ny, int nrot) {
@@ -324,7 +325,7 @@ int spawn_new_block() {
 	block_number = next_block_number;
 	next_block_number = rand() % 7;
 	block_state = 0;
-	x = 3; y = 1;
+	x = 3; y = 2;
 	
 	if(check_collision(x, y, block_state)) return 0;
 	
