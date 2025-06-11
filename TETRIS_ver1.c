@@ -60,7 +60,7 @@ void fix_block();
 void clear_lines();
 int spawn_new_block();
 long get_point();
-void save_result(long point);
+void save_result(int point);
 void print_result();
 void search_result();
 void clear_records();
@@ -128,15 +128,20 @@ int block_number = 0;  /*블록 번호*/
 int next_block_number = 0; /*다음 블록 번호 */
 int block_state = 0; /*블록 상태, 왼쪽, 오른쪽, 아래, 회전*/
 int x = 3, y = 2; /*블록의 최초 위치*/
-
-/* 게임 종료 때마다
- * 이름과 득점수와 
- * 날짜와 시간과 순위를 저장
- * */
-
 int point = 0; /* 현재 점수*/
 int best_point = 0; /* 최고 점수*/
 
+#if defined(_WIN32) || defined(_WIN64)
+	#define BOARD_BLOCK "[]"
+	#define FALLING_BLOCK "##"
+	#define FIXED_BLOCK "**"
+#else
+	#define BORAD_BLOCK "🟩"
+	#define FALLING_BLOCK "🔳"
+	#define FIXED_BLOCK "🟥"
+#endif
+
+#define BLANK "  "
 /* 메뉴 표시*/
 int display_menu() {
 	int menu = 0;
@@ -213,6 +218,7 @@ int game_start() {
 }
 
 void draw_block() {
+
 	printf("\033[H");
 	int i, j, bi, bj, b = 0;
 
@@ -222,17 +228,17 @@ void draw_block() {
 	for(i = 0; i < 4; i++) {
 		printf("  ");
 		for(j = 0; j < 4; j++) {
-			if(blocks[next_block_number][0][i][j]) printf("🟩"); //■■
+			if(blocks[next_block_number][0][i][j]) printf(BOARD_BLOCK); //■■
 			else printf("  ");
 		}
 		printf("\n");
 	}
-	printf("🟩");
+	printf(BOARD_BLOCK);
 	for(b = 1; b < WIDTH; b++) printf("🟩"); // 🔳 ⬛ 🟪 🟩
-	printf("🟩🟩\n");
+	printf(BOARD_BLOCK BOARD_BLOCK"\n");
 	
 	for(i = 1; i < HEIGHT; i++) { // 1~20
-		printf("🟩"); // ■ ■ ⬜️
+		printf(BOARD_BLOCK); // ■ ■ ⬜️
 		for (j = 0; j < WIDTH; j++) { // 0~9
 			int is_block = 0;
 
@@ -245,15 +251,15 @@ void draw_block() {
 					}
 				}
 			}
-			if (is_block) printf("🔳"); // █ 떨어지는 블럭 🔳 \033[36m██\033[0m
-			else if (tetris_table[i][j]) printf("🔳"); // 고정 블럭 ⬛ \033[90m██\033[0m
+			if (is_block) printf(FALLING_BLOCK); // █ 떨어지는 블럭 🔳 \033[36m██\033[0m
+			else if (tetris_table[i][j]) printf(FIXED_BLOCK); // 고정 블럭 ⬛ \033[90m██\033[0m
 			else printf("  ");
 		}
-		printf("🟩\n"); // 🟪 ██
+		printf(BOARD_BLOCK"\n"); // 🟪 ██
 	}
-	printf("🟩");
-	for(b = 0; b < WIDTH; b++) printf("🟩");
-	printf("🟩");
+	printf(BOARD_BLOCK);
+	for(b = 0; b < WIDTH; b++) printf(BOARD_BLOCK);
+	printf(BOARD_BLOCK);
 	printf("\n=========\t[I]: ROTATE\t=========");
 	printf("\n[J]: Left\t[K]: Down\t[L]: Right\t[A]: Fix\n");
 }
@@ -347,7 +353,7 @@ long get_point() {
 	return point;
 }
 
-void save_result(long score) {
+void save_result(int score) {
     Record top[MAX_TOP];
     Record queue[MAX_QUEUE];
     int tn = 0, qn = 0;
