@@ -5,33 +5,54 @@
 
     #include <windows.h>
     #include <stdio.h>
+    #include <conio.h>
+
+    static inline void init_console(void) {
+        SetConsoleOutputCP(CP_UTF8);
+        HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        DWORD outMode; GetConsoleMode(hOut, &outMode);
+        SetConsoleMode(hOut, outMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+    }
 
     int my_getch() {
-        DWORD mode, count;
-        INPUT_RECORD rec;
-        HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
-        GetConsoleMode(h, &mode);
-        SetConsoleMode(h, mode & ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT));
-        FlushConsoleInputBuffer(h);
-        do {
-            ReadConsoleInput(h, &rec, 1, &count);
-        } while (rec.EventType != KEY_EVENT || !rec.Event.KeyEvent.bKeyDown);
-        SetConsoleMode(h, mode);
-        return rec.Event.KeyEvent.uChar.AsciiChar;
+        return _getch();
     }
 
     int my_kbhit() {
-        DWORD count;
-        GetNumberOfConsoleInputEvents(GetStdHandle(STD_INPUT_HANDLE), &count);
-        return count > 0;
+        return _kbhit();
     }
 
     void clear_screen() {
-        system("cls");
+        HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+        CONSOLE_SCREEN_BUFFER_INFO csbi;
+        GetConsoleScreenBufferInfo(h, &csbi);
+        DWORD cells = csbi.dwSize.X * csbi.dwSize.Y;
+        COORD home = {0,0};
+        DWORD written;
+        FillConsoleOutputCharacter(h, ' ', cells, home, &written);
+        FillConsoleOutputAttribute(h, csbi.wAttributes, cells, home, &written);
+        SetConsoleCursorPosition(h, home);
     }
 
     void sleep_ms(int ms) {
         Sleep(ms);
+    }
+
+    #define BOARD_TOP_BOTTOM "--"
+    #define BOARD_TOPLEFT "+"
+    #define BOARD_TOPRIGHT "+"
+    #define BOARD_WALL "|"
+    #define BOARD_BOTTOMLEFT "+"
+    #define BOARD_BOTTOMRIGHT "+"
+	#define FALLING_BLOCK "[]"
+	#define FIXED_BLOCK "[]"
+
+    static double get_time_sec(void) {
+        static LARGE_INTEGER freq = {0};
+        if (!freq.QuadPart) QueryPerformanceFrequency(&freq);
+      LARGE_INTEGER now;
+      QueryPerformanceCounter(&now);
+      return (double)now.QuadPart / freq.QuadPart;
     }
 
 #else
@@ -41,6 +62,9 @@
     #include <fcntl.h>
     #include <sys/select.h>
     #include <stdio.h>
+    #include <time.h>
+
+    static inline void init_console(void) {}
 
     int my_getch() {
     struct termios oldt, newt;
@@ -91,14 +115,27 @@
 
 
     void clear_screen() {
-        printf("\033[2J\033[H");
-        fflush(stdout);
+        printf("\x1b[H\x1b[2J");
     }
 
     void sleep_ms(int ms) {
         usleep(ms * 1000);
     }
 
+    #define BOARD_TOP_BOTTOM "🟩"
+    #define BOARD_TOPLEFT "🟩"
+    #define BOARD_TOPRIGHT "🟩"
+    #define BOARD_WALL "🟩"
+    #define BOARD_BOTTOMLEFT "🟩"
+    #define BOARD_BOTTOMRIGHT "🟩"
+	#define FALLING_BLOCK "🔳"
+	#define FIXED_BLOCK "🟥"
+
+    static double get_time_sec(void) {
+      struct timespec t;
+      clock_gettime(CLOCK_MONOTONIC, &t);
+      return t.tv_sec + t.tv_nsec * 1e-9;
+    }
 #endif
 
 void hide_cursor() {
@@ -110,5 +147,8 @@ void show_cursor() {
     printf("\033[?25h");
     fflush(stdout);
 }
+#define BLANK "  "
 
 #endif // PLATFORM_H
+
+

@@ -37,18 +37,22 @@
 #define MAX_TOP 3
 #define MAX_QUEUE 20
 
+#define HEIGHT 21
+#define WIDTH 10
+int tetris_table[HEIGHT][WIDTH] = {0};
+
+int block_number = 0;  /*블록 번호*/
+int next_block_number = 0; /*다음 블록 번호 */
+int block_state = 0; /*블록 상태, 왼쪽, 오른쪽, 아래, 회전*/
+int x = 3, y = 2; /*블록의 최초 위치*/
+int point = 0; /* 현재 점수*/
+int best_point = 0; /* 최고 점수*/
 typedef struct {
 	char name[30];
 	long point;
 	int year, month, day;
 	int hour, min;
 } Record;
-
-static int cmp_desc(const void *a, const void *b) {
-    const Record *A = a, *B = b;
-    return (B->point - A->point) > 0 ? 1 : (B->point - A->point) < 0 ? -1 : 0;
-}
-
 int game = GAME_END; /*게임 시작, 게임 종료*/
 
 int display_menu(); /* 메뉴 표시*/
@@ -63,7 +67,44 @@ long get_point();
 void save_result(int point);
 void print_result();
 void search_result();
-void clear_records();
+void delete_records();
+
+static void confirm_delete_records() {
+	char c;
+	int ch;
+	while ((ch = getchar()) != '\n' && ch != EOF) {}
+
+	while (1) {
+			printf("Records Reset? [Y / N] : ");
+			fflush(stdout);
+			c = getchar();
+			while ((ch = getchar()) != '\n' && ch != EOF) {}
+
+			if (c == 'Y' || c == 'y') {
+				delete_records();
+				getchar();
+				break;
+			} else if (c == 'N' || c == 'n') break;
+			printf("Please enter Y or N. \n");
+	}
+}
+
+static int compare_recodes(const void *a, const void *b) {
+    const Record *A = a, *B = b;
+    return (B->point - A->point) > 0 ? 1 : (B->point - A->point) < 0 ? -1 : 0;
+}
+
+static void fall_or_fix() {
+	if(!check_collision(x, y + 1, block_state)) {
+		y++;
+	} else {
+		fix_block();
+		clear_lines();
+		if(!spawn_new_block()) {
+			game = GAME_END;
+		}
+	}
+}
 
 char blocks[7][4][4][4] = {
 	{
@@ -118,31 +159,9 @@ char blocks[7][4][4][4] = {
 			{{1, 1, 0, 0},   {1, 1, 0, 0},   {0, 0, 0, 0},   {0, 0, 0, 0}}
 	},
 }; 
-// 블럭 7종류
 
-#define HEIGHT 21
-#define WIDTH 10
-int tetris_table[HEIGHT][WIDTH] = {0};
 
-int block_number = 0;  /*블록 번호*/
-int next_block_number = 0; /*다음 블록 번호 */
-int block_state = 0; /*블록 상태, 왼쪽, 오른쪽, 아래, 회전*/
-int x = 3, y = 2; /*블록의 최초 위치*/
-int point = 0; /* 현재 점수*/
-int best_point = 0; /* 최고 점수*/
-
-#if defined(_WIN32) || defined(_WIN64)
-	#define BOARD_BLOCK "[]"
-	#define FALLING_BLOCK "##"
-	#define FIXED_BLOCK "**"
-#else
-	#define BORAD_BLOCK "🟩"
-	#define FALLING_BLOCK "🔳"
-	#define FIXED_BLOCK "🟥"
-#endif
-
-#define BLANK "  "
-/* 메뉴 표시*/
+/* 정의된 함수들 */
 int display_menu() {
 	int menu = 0;
 
@@ -160,7 +179,7 @@ int display_menu() {
 		printf("\n\t\t\t============================");
 		printf("\n\t\t\t\t\t SELECT : ");
 		scanf("%d",&menu);
-		if(menu < 1 || menu > 4) {
+		if(menu < 1 || menu > 5) {
 			continue;
 		}
 		else {
@@ -176,42 +195,63 @@ int game_start() {
 	block_state = 0;
 	x = 3; y = 2;
 	spawn_new_block();
-	int drop_timer = 0;
-
+	double last = get_time_sec(), now;
 	clear_screen();
 	hide_cursor();
 
-	while (1) {
-		draw_block();
-		fflush(stdout);
-	
+	draw_block();
+	fflush(stdout);
+
+	while (game == GAME_START) {
+		int need_rendering = 0;
+
 		if (my_kbhit()) {
 			char key = my_getch();
 			fflush(stdout);
 
-			if(key == 'p' || key == 'P') break;
-			else if (key == 'j' || key == 'J') move_block(LEFT);
-			else if (key == 'l' || key == 'L') move_block(RIGHT);
-			else if (key == 'k' || key == 'K') move_block(DOWN);
-			else if (key == 'i' || key == 'I') move_block(ROTATE);
-			else if (key == 'a' || key == 'A') {
-				while (!check_collision(x, y + 1, block_state)) y++;
+			switch (key) {
+				case 'p' : case'P' :
+					game = GAME_END;
+					break;
+				case 'J' : case'j' :
+					move_block(LEFT); need_rendering = 1;
+					break;
+				case 'K' : case'k' :
+					if (!check_collision(x, y + 1, block_state)) {
+						y++; 
+						need_rendering = 1;
+					}
+					break;
+				case 'L' : case'l' :
+					move_block(RIGHT); need_rendering = 1;
+					break;
+				case 'I' : case'i' :
+					move_block(ROTATE); need_rendering = 1;
+					break; 
+				case 'A' : case'a' :
+					while (!check_collision(x, y + 1, block_state)) y++;
+					fall_or_fix();
+					need_rendering = 1;
+					break;
 			}
 		}
-	// 일정 시간마다 자동 하강
-	drop_timer++;
-	if (drop_timer > 5) { // 약 0.5초
-		drop_timer = 0;
-		if (!check_collision(x, y + 1, block_state)) {
-			y++;
-		} else {
-			fix_block();
-			clear_lines();
-			if (!spawn_new_block()) break;
+		
+		now = get_time_sec();
+		if (now - last >= 0.5) {
+			last += 0.5;
+			fall_or_fix();
+			need_rendering = 1;
+			if (game == GAME_END) break;
 		}
+
+		if (need_rendering) {
+			clear_screen();
+			draw_block();
+			fflush(stdout);
+		}
+		sleep_ms(10);
 	}
-	sleep_ms(100); // 잠깐 rest
-	}
+
 	show_cursor();
 	save_result(point);
 	return 1; // 다시 메뉴로
@@ -224,21 +264,20 @@ void draw_block() {
 
 	printf("\n\n SCORE: %d\n", point);
 	printf("NEXT BLOCK: \n");
-
 	for(i = 0; i < 4; i++) {
 		printf("  ");
 		for(j = 0; j < 4; j++) {
-			if(blocks[next_block_number][0][i][j]) printf(BOARD_BLOCK); //■■
+			if(blocks[next_block_number][0][i][j]) printf(FALLING_BLOCK); //■■
 			else printf("  ");
 		}
 		printf("\n");
 	}
-	printf(BOARD_BLOCK);
-	for(b = 1; b < WIDTH; b++) printf("🟩"); // 🔳 ⬛ 🟪 🟩
-	printf(BOARD_BLOCK BOARD_BLOCK"\n");
+	printf(BOARD_TOPLEFT);
+	for(b = 0; b < WIDTH; b++) printf(BOARD_TOP_BOTTOM); // 🔳 ⬛ 🟪 🟩
+	printf(BOARD_TOPRIGHT"\n");
 	
 	for(i = 1; i < HEIGHT; i++) { // 1~20
-		printf(BOARD_BLOCK); // ■ ■ ⬜️
+		printf(BOARD_WALL); // ■ ■ ⬜️
 		for (j = 0; j < WIDTH; j++) { // 0~9
 			int is_block = 0;
 
@@ -255,14 +294,14 @@ void draw_block() {
 			else if (tetris_table[i][j]) printf(FIXED_BLOCK); // 고정 블럭 ⬛ \033[90m██\033[0m
 			else printf("  ");
 		}
-		printf(BOARD_BLOCK"\n"); // 🟪 ██
+		printf(BOARD_WALL"\n"); // 🟪 ██
 	}
-	printf(BOARD_BLOCK);
-	for(b = 0; b < WIDTH; b++) printf(BOARD_BLOCK);
-	printf(BOARD_BLOCK);
+	printf(BOARD_BOTTOMLEFT);
+	for(b = 0; b < WIDTH; b++) printf(BOARD_TOP_BOTTOM);
+	printf(BOARD_BOTTOMRIGHT);
 	printf("\n=========\t[I]: ROTATE\t=========");
 	printf("\n[J]: Left\t[K]: Down\t[L]: Right\t[A]: Fix\n");
-}
+	}
 
 int check_collision (int nx, int ny, int nrot) {
 	int i, j = 0;
@@ -378,7 +417,7 @@ void save_result(int score) {
     }
 
     // 2) temp 배열을 점수 내림차순으로 정렬
-    qsort(temp, total, sizeof(Record), cmp_desc);
+    qsort(temp, total, sizeof(Record), compare_recodes);
 
     // 3) 나눠담기: 앞의 MAX_TOP개 → top, 나머지 → queue
     for (int i = 0; i < total; i++) {
@@ -409,7 +448,7 @@ void save_result(int score) {
         // 배열이 가득 차 있으면 마지막(가장 낮은 점수) 쪽을 덮어씌움
         temp[total - 1] = newr;
     }
-    qsort(temp, total, sizeof(Record), cmp_desc);
+    qsort(temp, total, sizeof(Record), compare_recodes);
 
     // 재분리
     tn = qn = 0;
@@ -552,24 +591,25 @@ void search_result() {
 	getchar();
 }
 
-void clear_records() {
-    FILE *fp = fopen("records.txt", "w");
-    if (!fp) {
-        perror("records.txt Reset Fail");
-        return;
-    }
-    // w 모드로 열면 파일의 모든 내용이 삭제(truncate) 됩니다.
-    fclose(fp);
-    printf("▶ records.txt Reset Success \n");
+void delete_records() {
+    if (remove("records.txt") == 0) {
+		printf(" == records.txt deleted == \n");
+	} else {
+		perror("records.txt delete fail");
+	}
+	FILE *fp = fopen("records.txt", "w");
+	if (fp) fclose(fp);
 }
+
 
 /// 테트리스 게임 메인 함수
 /// 메뉴를 표시하고 사용자의 선택에 따라 게임을 시작하거나 결과를 검색하거나 종료합니다.
 /// @param  
 /// @return 
 int main(void) {
-	int menu = 1;
 	setlocale(LC_ALL, "");
+	int menu = 1;
+
 	while(menu) {
 		menu = display_menu();
 
@@ -587,7 +627,7 @@ int main(void) {
 		else if(menu == 4) {
 			exit(0);
 		} else if (menu == 5) {
-			clear_records();
+			confirm_delete_records();
 		}
 	}
 	clear_screen();
